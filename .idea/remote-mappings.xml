@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteMappingsManager">
+    <list>
+      <list>
+        <remote-mappings server-id="python@ssh://swkim@210.125.31.53:22/usr/bin/python3">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/home/swkim/_DepthPredic/_SOA/DORN" />
+            </list>
+          </settings>
+        </remote-mappings>
+        <remote-mappings server-id="python@ssh://swkim@220.69.128.149:22/usr/bin/python3">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/home/swkim/_DepthPredic/_SOA/DORN" />
+            </list>
+          </settings>
+        </remote-mappings>
+      </list>
+    </list>
+  </component>
+</project>
