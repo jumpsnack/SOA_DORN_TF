@@ -21,7 +21,6 @@ class _Machine:
 
         self.sess = tf_session
         self.sess.run([_tf.global_variables_initializer(), _tf.local_variables_initializer()])
-        self.LUT_rgb.init.run()
         self.LUT_gt.init.run()
 
         self.pretrain_restorer = None

@@ -31,7 +31,6 @@ def _gen_disc_labels(nrof_labels, min, max):
         _tf.contrib.lookup.KeyValueTensorInitializer(keys, labels, value_dtype=_tf.float64), 0)
 
 
-labels_rgb, LUT_rgb = _gen_disc_labels(_FLAGS.num_bins, _FLAGS.INPUT_minima, _FLAGS.INPUT_maxima)
 labels_gt, LUT_gt = _gen_disc_labels(_FLAGS.num_bins, _FLAGS.GT_minima, _FLAGS.GT_maxima)
 
 
@@ -58,7 +57,6 @@ def build(machine):
 
     trainable_variables.append(GLOBAL_STEP)
 
-    machine.LUT_rgb = LUT_rgb
     machine.LUT_gt = LUT_gt
     machine.INPUTS = INPUTS
     machine.OUTPUTS = OUTPUTS
