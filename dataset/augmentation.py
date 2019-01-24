@@ -8,7 +8,7 @@ _FLAGS = _tf.app.flags.FLAGS
 
 def resize(x, y):
     x = _tf.image.resize_images(x, (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w))
-    y = _tf.image.resize_images(y, (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w))
+    y = _tf.image.resize_images(y, (_FLAGS.dim_output_h, _FLAGS.dim_output_w))
     return x, y
 
 
@@ -16,7 +16,12 @@ def _scale(x, y):
     assert x.shape == (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w, 3)
     assert x.shape[0] == y.shape[0] and x.shape[1] == y.shape[1]
     size_h, size_w = (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w)
-    fraction = _tf.random_uniform([], 1., 1.5)
+    if str(_FLAGS.type).startswith('KITTI'):
+        fraction = _tf.random_uniform([], 1., 1.2)
+    elif str(_FLAGS.type).startswith('NYU'):
+        fraction = _tf.random_uniform([], 1., 1.5)
+    else:
+        fraction = _tf.random_uniform([], 1., 1.5)
     scaled_size = _tf.cast(_tf.stack((size_h * fraction, size_w * fraction), axis=0), dtype=_tf.int32)
 
     try:
@@ -77,8 +82,15 @@ def _flips(x, y):
     return x, y
 
 
-aug_fn = {'scale': _scale, 'trans': _trans, 'color': _color, 'flips': _flips, 'rot': _rot}
-rand_aug_fn = {'color': _color, 'flips': _flips}
+if str(_FLAGS.type).startswith('KITTI'):
+    aug_fn = {'scale': _scale, 'trans': _trans, 'color': _color, 'flips': _flips, 'rot': _rot}
+    rand_aug_fn = {'color': _color, 'flips': _flips, 'scale': _scale}
+elif str(_FLAGS.type).startswith('NYU'):
+    aug_fn = {'scale': _scale, 'trans': _trans, 'color': _color, 'flips': _flips, 'rot': _rot}
+    rand_aug_fn = {'color': _color, 'flips': _flips, 'scale': _scale}
+else:
+    aug_fn = {'scale': _scale, 'trans': _trans, 'color': _color, 'flips': _flips, 'rot': _rot}
+    rand_aug_fn = {'color': _color, 'flips': _flips}
 
 
 def _random_aug(stream):
@@ -88,9 +100,10 @@ def _random_aug(stream):
                         lambda: fn[1](x, y),
                         lambda: (x, y))
 
-    x, y = _tf.cond(_tf.less(_tf.random_uniform([], 0, 1.0), .7),
-                    lambda: _rot(x, y),
-                    lambda: (x, y))
+    if not str(_FLAGS.type).startswith('KITTI'):
+        x, y = _tf.cond(_tf.less(_tf.random_uniform([], 0, 1.0), .7),
+                        lambda: _rot(x, y),
+                        lambda: (x, y))
 
     return resize(x, y)
 

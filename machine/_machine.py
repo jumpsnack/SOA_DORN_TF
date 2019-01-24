@@ -248,9 +248,7 @@ class _Machine:
         )
         rgb, gt = self.dataset_loader.get_stream_batch(self.sess, stream_name=flag_stream)
 
-        (N, H, W, C) = gt.shape
-
-        assert H == _FLAGS.dim_dataset_h and W == _FLAGS.dim_dataset_w
+        (N, H, W, C) = rgb.shape
 
         ord_score = _np.zeros((N, H, W, C), dtype=_np.float32)
         decoded_gt = _np.zeros((N, H, W, C), dtype=_np.float32)

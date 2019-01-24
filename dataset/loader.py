@@ -123,7 +123,8 @@ class Loader():
                 # ===================================
                 image = _tf.image.decode_png(file, channels)
                 image = _tf.cast(image, _tf.float32)
-                image = image / 256.0 * _FLAGS.GT_maxima
+                image = _tf.where(_tf.less_equal(image, _FLAGS.GT_minima), -_tf.ones_like(image), image)
+                image = _tf.where(_tf.greater_equal(image, _FLAGS.GT_maxima), _tf.ones_like(image) * _FLAGS.GT_maxima, image)
             else:
                 image = _tf.image.decode_png(file, channels)
                 image = _tf.cast(image, _tf.float32)

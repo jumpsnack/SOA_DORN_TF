@@ -37,7 +37,7 @@ labels_gt, LUT_gt = _gen_disc_labels(_FLAGS.num_bins, _FLAGS.GT_minima, _FLAGS.G
 def build(machine):
     INPUTS = _tf.placeholder(_tf.float32, [None, _FLAGS.dim_input_h, _FLAGS.dim_input_w, 3],
                              name="input_placeholder_x")
-    OUTPUTS = _tf.placeholder(_tf.float32, [None, _FLAGS.dim_input_h, _FLAGS.dim_input_w, 1])
+    OUTPUTS = _tf.placeholder(_tf.float32, [None, _FLAGS.dim_output_h, _FLAGS.dim_output_w, 1])
     IS_TRAINING = _tf.placeholder(bool)
     GLOBAL_STEP = _tf.Variable(0, name='global_step', trainable=False)
 
