@@ -6,9 +6,9 @@ _logging = _logutil.get_logger()
 _FLAGS = _tf.app.flags.FLAGS
 
 
-def resize(x, y):
+def adjust_size(x, y):
     x = _tf.image.resize_images(x, (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w))
-    y = _tf.image.resize_images(y, (_FLAGS.dim_output_h, _FLAGS.dim_output_w))
+    y = _tf.image.resize_images(y, (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w))
     return x, y
 
 
@@ -105,12 +105,12 @@ def _random_aug(stream):
                         lambda: _rot(x, y),
                         lambda: (x, y))
 
-    return resize(x, y)
+    return adjust_size(x, y)
 
 
 def _without_aug(stream):
     x, y = stream
-    return resize(x, y)
+    return adjust_size(x, y)
 
 
 def _sequence_aug(stream, tasks):
@@ -120,7 +120,7 @@ def _sequence_aug(stream, tasks):
             x, y = aug_fn[task](x, y)
         else:
             _logging.warning("Invalid option(s) [\'%s\']", task)
-    return resize(x, y)
+    return adjust_size(x, y)
 
 
 def augment(stream, tasks):

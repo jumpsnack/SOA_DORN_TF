@@ -277,7 +277,7 @@ class _Machine:
         _logging.info(".......Samples are saved")
 
     def save_board_logs(self, summary_writer, flag_stream, is_training=False):
-        rgb, gt = self.dataset_loader.get_stream_batch(self.sess, stream_name=flag_stream)
+        rgb, gt = self.dataset_loader.get_stream_batch(self.sess, stream_name=flag_stream, is_tensorboard=True)
 
         summary_str = self.sess.run(self.summary_op,
                                     feed_dict={self.INPUTS: rgb,

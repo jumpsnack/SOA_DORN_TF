@@ -19,10 +19,62 @@ def load(machine=None):
 
 class Loader():
     def __init__(self):
-        self._streams = {}
+        self._eval_streams = {}
+        self._tensorboard_streams = {}
         self._training_stream = None
         self._generate_stream()
         pass
+
+    def _resize(self, stream):
+        x, y = stream
+        x = _tf.image.resize_images(x, (_FLAGS.dim_input_h, _FLAGS.dim_input_w))
+        y = _tf.image.resize_images(y, (_FLAGS.dim_output_h, _FLAGS.dim_output_w))
+        return x, y
+
+    def _random_crop(self, stream):
+        x, y = stream
+        (W, H, _) = x.shape
+        assert (W, H) == (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w)
+        size_h, size_w = (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w)
+        if size_h > _FLAGS.dim_input_h or size_w > _FLAGS.dim_input_w:
+            off_w = _tf.cast(_tf.random_uniform([], 0, size_w - _FLAGS.dim_input_w), _tf.int32)
+            off_h = _tf.cast(_tf.random_uniform([], 0, size_h - _FLAGS.dim_input_h), _tf.int32)
+
+            try:
+                _x = _tf.image.crop_to_bounding_box(x, offset_height=off_h, offset_width=off_w,
+                                                    target_width=_FLAGS.dim_input_w,
+                                                    target_height=_FLAGS.dim_input_h)
+                _y = _tf.image.crop_to_bounding_box(y, offset_height=off_h, offset_width=off_w,
+                                                    target_width=_FLAGS.dim_input_w,
+                                                    target_height=_FLAGS.dim_input_h)
+                x = _x
+                y = _y
+            except Exception as e:
+                print(e)
+
+        return self._resize((x, y))
+
+    def _center_crop(self, stream):
+        x, y = stream
+        (W, H, _) = x.shape
+        assert (W, H) == (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w)
+        size_h, size_w = (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w)
+        off_w = _tf.cast((size_w - _FLAGS.dim_input_w) / 2.0, _tf.int32)
+        off_h = _tf.cast(size_h - _FLAGS.dim_input_h, _tf.int32)
+
+        try:
+            _x = _tf.image.crop_to_bounding_box(x, offset_height=off_h, offset_width=off_w,
+                                                target_width=_FLAGS.dim_input_w,
+                                                target_height=_FLAGS.dim_input_h)
+            _y = _tf.image.crop_to_bounding_box(y, offset_height=off_h, offset_width=off_w,
+                                                target_width=_FLAGS.dim_input_w,
+                                                target_height=_FLAGS.dim_input_h)
+            x = _x
+            y = _y
+        except Exception as e:
+            print(e)
+
+        return self._resize((x, y))
 
     def _generate_stream(self):
         for key in [_key for _key in _FLAGS if str(_key).endswith('csv')]:
@@ -35,7 +87,6 @@ class Loader():
 
             augs = []
             if key.find('train') >= 0:
-                is_training = True
                 for _key in [_key for _key in _FLAGS]:
                     if str(_key).startswith('augment'):
                         aug_flag = _FLAGS[_key]._value
@@ -44,60 +95,45 @@ class Loader():
                 data_pool = _tf.data.TextLineDataset([csv_path])
                 data_pool = data_pool.apply(_tde.shuffle_and_repeat(_FLAGS.buffer_size))
                 data_pool = data_pool.apply(_tde.map_and_batch(
-                    map_func=lambda row: self._read_row(row, augs, is_training),
+                    map_func=lambda row: self._read_row(row, augs, self._random_crop),
                     batch_size=batch_size,
                     num_parallel_batches=_FLAGS.num_parallel_batches
                 ))
                 self._training_stream = data_pool.make_one_shot_iterator().get_next()
 
-            is_training = False
             data_pool = _tf.data.TextLineDataset([csv_path])
             data_pool = data_pool.apply(_tde.shuffle_and_repeat(1))
             data_pool = data_pool.apply(_tde.map_and_batch(
-                map_func=lambda row: self._read_row(row, augs, is_training),
+                map_func=lambda row: self._read_row(row, augs),
                 batch_size=batch_size,
                 num_parallel_batches=_FLAGS.num_parallel_batches
             ))
             batch_stream = data_pool.make_one_shot_iterator().get_next()
 
-            print("Stream generated... " + key)
-            self._streams[key] = batch_stream
+            print("Stream... " + key)
+            self._eval_streams[key] = batch_stream
 
-    def _read_row(self, csv_row, augs, is_training=False):
-        def _pre_processing(stream, is_training):
-            def _random_crop(stream):
-                x, y = stream
-                (W, H, C) = x.shape
-                assert (W, H, C) == (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w, 3)
-                size_h, size_w = (_FLAGS.dim_dataset_h, _FLAGS.dim_dataset_w)
-                off_w = _tf.cast(_tf.random_uniform([], 0, size_w - _FLAGS.dim_input_w), _tf.int32)
-                off_h = _tf.cast(_tf.random_uniform([], 0, size_h - _FLAGS.dim_input_h), _tf.int32)
+            if _FLAGS.use_tensorboard:
+                data_pool = _tf.data.TextLineDataset([csv_path])
+                data_pool = data_pool.apply(_tde.shuffle_and_repeat(1))
+                data_pool = data_pool.apply(_tde.map_and_batch(
+                    map_func=lambda row: self._read_row(row, augs, self._center_crop),
+                    batch_size=batch_size,
+                    num_parallel_batches=_FLAGS.num_parallel_batches
+                ))
+                batch_stream = data_pool.make_one_shot_iterator().get_next()
 
-                try:
-                    _x = _tf.image.crop_to_bounding_box(x, offset_height=off_h, offset_width=off_w,
-                                                        target_width=_FLAGS.dim_input_w,
-                                                        target_height=_FLAGS.dim_input_h)
-                    _y = _tf.image.crop_to_bounding_box(y, offset_height=off_h, offset_width=off_w,
-                                                        target_width=_FLAGS.dim_input_w,
-                                                        target_height=_FLAGS.dim_input_h)
-                    x = _x
-                    y = _y
-                except Exception as e:
-                    print(e)
+                print("Stream for tensorboard... " + key)
+                self._tensorboard_streams[key] = batch_stream
 
-                return x, y
-
-            if is_training:
-                if str(_FLAGS.type).startswith("KITTI"):
-                    return _random_crop(stream)
-            return stream
-
+    def _read_row(self, csv_row, augs, pre_processing=None):
         rgb_name, gt_name = _tf.decode_csv(csv_row, record_defaults=[[""], [""]])
         rgb_img = self._load_img(rgb_name, channels=3)
         gt_img = self._load_img(gt_name)
 
         (rgb_img, gt_img) = _augmentation.augment((rgb_img, gt_img), augs)
-        (rgb_img, gt_img) = _pre_processing((rgb_img, gt_img), is_training)
+        if pre_processing is not None:
+            (rgb_img, gt_img) = pre_processing((rgb_img, gt_img))
         return rgb_img, gt_img
 
     def _load_img(self, filename, channels=1):
@@ -124,7 +160,8 @@ class Loader():
                 image = _tf.image.decode_png(file, channels)
                 image = _tf.cast(image, _tf.float32)
                 image = _tf.where(_tf.less_equal(image, _FLAGS.GT_minima), -_tf.ones_like(image), image)
-                image = _tf.where(_tf.greater_equal(image, _FLAGS.GT_maxima), _tf.ones_like(image) * _FLAGS.GT_maxima, image)
+                image = _tf.where(_tf.greater_equal(image, _FLAGS.GT_maxima), _tf.ones_like(image) * _FLAGS.GT_maxima,
+                                  image)
             else:
                 image = _tf.image.decode_png(file, channels)
                 image = _tf.cast(image, _tf.float32)
@@ -135,23 +172,22 @@ class Loader():
         return image
 
     def get_stream_names(self):
-        return list(self._streams.keys())
+        return list(self._eval_streams.keys())
 
     def get_stream_batch(self, sess, **kwargs):
-
-        if kwargs.get("is_training") is None:
-            stream_name = kwargs.get("stream_name")
-            is_training = False
-            assert stream_name is not None
-        else:
-            is_training = kwargs.get("is_training")
-            stream_name = ""
-            assert is_training is not None
+        is_training = kwargs.get('is_training', False)
+        is_tensorboard = kwargs.get('is_tensorboard', False)
+        stream_name = kwargs.get('stream_name', '')
         try:
             if is_training:
+                assert self._training_stream is not None
                 stream = self._training_stream
+            elif is_tensorboard:
+                assert stream_name is not '' and self._tensorboard_streams[stream_name] is not None
+                stream = self._tensorboard_streams[stream_name]
             else:
-                stream = self._streams[stream_name]
+                assert stream_name is not '' and self._eval_streams[stream_name] is not None
+                stream = self._eval_streams[stream_name]
         except KeyError:
             if sess is not None:
                 sess.close()
