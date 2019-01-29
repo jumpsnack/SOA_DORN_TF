@@ -249,11 +249,11 @@ class _Machine:
         rgb, gt = self.dataset_loader.get_stream_batch(self.sess, stream_name=flag_stream)
         (data_N, data_H, data_W, data_C) = gt.shape
 
-        assert data_H == _FLAGS.dim_dataset_h and data_W == _FLAGS.dim_dataset_w
-
         if str(_FLAGS.type).startswith('NYU') or _FLAGS.num_frag == 1:
+            assert data_H == _FLAGS.dim_output_h and data_W == _FLAGS.dim_output_wadd >
             (out_N, out_H, out_W, out_C) = (data_N, _FLAGS.dim_output_h, _FLAGS.dim_output_w, data_C)
         elif str(_FLAGS.type).startswith('KITTI'):
+            assert data_H == _FLAGS.dim_dataset_h and data_W == _FLAGS.dim_dataset_w
             (out_N, out_H, out_W, out_C) = (data_N, data_H, data_W, data_C)
         else:
             (out_N, out_H, out_W, out_C) = (data_N, data_H, data_W, data_C)
