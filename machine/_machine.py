@@ -247,7 +247,7 @@ class _Machine:
             "step_%05d" % (step)
         )
         rgb, gt = self.dataset_loader.get_stream_batch(self.sess, stream_name=flag_stream)
-        (data_N, data_H, data_W, data_C) = rgb.shape
+        (data_N, data_H, data_W, data_C) = gt.shape
 
         assert data_H == _FLAGS.dim_dataset_h and data_W == _FLAGS.dim_dataset_w
 
