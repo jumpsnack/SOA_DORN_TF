@@ -247,29 +247,39 @@ class _Machine:
             "step_%05d" % (step)
         )
         rgb, gt = self.dataset_loader.get_stream_batch(self.sess, stream_name=flag_stream)
+        (data_N, data_H, data_W, data_C) = rgb.shape
 
-        (N, H, W, C) = rgb.shape
+        assert data_H == _FLAGS.dim_dataset_h and data_W == _FLAGS.dim_dataset_w
 
-        ord_score = _np.zeros((N, H, W, C), dtype=_np.float32)
-        decoded_gt = _np.zeros((N, H, W, C), dtype=_np.float32)
-        counts = _np.zeros((N, H, W, C), dtype=_np.float32)
+        if str(_FLAGS.type).startswith('NYU') or _FLAGS.num_frag == 1:
+            (out_N, out_H, out_W, out_C) = (data_N, _FLAGS.dim_output_h, _FLAGS.dim_output_w, data_C)
+        elif str(_FLAGS.type).startswith('KITTI'):
+            (out_N, out_H, out_W, out_C) = (data_N, data_H, data_W, data_C)
+        else:
+            (out_N, out_H, out_W, out_C) = (data_N, data_H, data_W, data_C)
+
+        ord_score = _np.zeros((out_N, out_H, out_W, out_C), dtype=_np.float32)
+        decoded_gt = _np.zeros((out_N, out_H, out_W, out_C), dtype=_np.float32)
+        counts = _np.zeros((out_N, out_H, out_W, out_C), dtype=_np.float32)
         for i in range(0, _FLAGS.num_frag):
-            h0 = 0
-            h1 = _FLAGS.dim_input_h
-            w0 = i * int(_FLAGS.dim_input_w / 2)
-            w1 = w0 + _FLAGS.dim_input_w
-            if w1 > W:
-                w0 = W - _FLAGS.dim_input_w
-                w1 = W
-            _frag_rgb = rgb[:, h0:h1, w0:w1, :]
-            _frag_gt = gt[:, h0:h1, w0:w1, :]
+            (in_h0, in_h1) = (0, _FLAGS.dim_input_h)
+            (out_h0, out_h1) = (0, _FLAGS.dim_output_h)
+            in_w0 = i * int(_FLAGS.dim_input_w / 2)
+            in_w1 = in_w0 + _FLAGS.dim_input_w
+            out_w0 = i * int(_FLAGS.dim_output_w / 2)
+            out_w1 = out_w0 + _FLAGS.dim_output_w
+            if in_w1 > data_W:
+                (in_w0, in_w1) = (data_W - _FLAGS.dim_input_w, data_W)
+                (out_w0, out_w1) = (out_W - _FLAGS.dim_output_w, out_W)
+            _frag_rgb = rgb[:, in_h0:in_h1, in_w0:in_w1, :]
+            _frag_gt = gt[:, in_h0:in_h1, in_w0:in_w1, :]
             _decoded_nn_val, _decoded_gt_val = self.sess.run([self.decoded_nn_out, self.decoded_gt],
                                                              feed_dict={self.INPUTS: _frag_rgb,
                                                                         self.OUTPUTS: _frag_gt,
                                                                         self.IS_TRAINING: False})
-            ord_score[:, h0:h1, w0:w1, :] += _decoded_nn_val
-            decoded_gt[:, h0:h1, w0:w1, :] += _decoded_gt_val
-            counts[:, h0:h1, w0:w1, :] += 1.0
+            ord_score[:, out_h0:out_h1, out_w0:out_w1, :] += _decoded_nn_val
+            decoded_gt[:, out_h0:out_h1, out_w0:out_w1, :] += _decoded_gt_val
+            counts[:, out_h0:out_h1, out_w0:out_w1, :] += 1.0
 
         ord_score = ord_score / counts - _FLAGS.dsc_shift
         decoded_gt = decoded_gt / counts - _FLAGS.dsc_shift

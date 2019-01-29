@@ -93,26 +93,45 @@ _flags.DEFINE_string("log_dir", _pj(_cwd, "_log"), "[META] log dir")
 # ===================
 # HYPER-P
 # ===================
-_flags.DEFINE_integer("dim_dataset_h", 385, "")
 if str(_FLAGS.type).startswith('NYU'):
-    _flags.DEFINE_integer("dim_dataset_w", 513, "")
+    _flags.DEFINE_integer("dim_dataset_h", 288, "")
+    _flags.DEFINE_integer("dim_dataset_w", 384, "")
     _flags.DEFINE_integer("num_frag", 1, "")
 elif str(_FLAGS.type).startswith('KITTI'):
+    _flags.DEFINE_integer("dim_dataset_h", 385, "")
     _flags.DEFINE_integer("dim_dataset_w", 1242, "")
     _flags.DEFINE_integer("num_frag", 4, "")
 elif str(_FLAGS.type).startswith('Make3D'):
+    _flags.DEFINE_integer("dim_dataset_h", 288, "")
+    _flags.DEFINE_integer("dim_dataset_w", 384, "")
     _flags.DEFINE_integer("dim_dataset_w", 1242, "")
 else:
     raise ValueError("_FLAGS.type:(%s) doesn't exist" % _FLAGS.type)
 
-_flags.DEFINE_integer("dim_input_h", 385, "")
-_flags.DEFINE_integer("dim_input_w", 513, "")
-_flags.DEFINE_integer("dim_output_h", 385, "")
-_flags.DEFINE_integer("dim_output_w", 513, "")
+if str(_FLAGS.type).startswith('NYU'):
+    _flags.DEFINE_integer("dim_input_h", 257, "")
+    _flags.DEFINE_integer("dim_input_w", 353, "")
+    _flags.DEFINE_integer("dim_output_h", 257, "")
+    _flags.DEFINE_integer("dim_output_w", 353, "")
+elif str(_FLAGS.type).startswith('KITTI'):
+    _flags.DEFINE_integer("dim_input_h", 385, "")
+    _flags.DEFINE_integer("dim_input_w", 513, "")
+    _flags.DEFINE_integer("dim_output_h", 385, "")
+    _flags.DEFINE_integer("dim_output_w", 513, "")
+else:
+    _flags.DEFINE_integer("dim_input_h", 385, "")
+    _flags.DEFINE_integer("dim_input_w", 513, "")
+    _flags.DEFINE_integer("dim_output_h", 385, "")
+    _flags.DEFINE_integer("dim_output_w", 513, "")
 
 _flags.DEFINE_integer("batch_size", 3, "")
 
-_flags.DEFINE_integer("num_classes", 142, "")
+if str(_FLAGS.type).startswith('NYU'):
+    _flags.DEFINE_integer("num_classes", 136, "")
+elif str(_FLAGS.type).startswith('KITTI'):
+    _flags.DEFINE_integer("num_classes", 142, "")
+else:
+    _flags.DEFINE_integer("num_classes", 142, "")
 _flags.DEFINE_integer("num_bins", int(_FLAGS.num_classes / 2), "")
 _flags.DEFINE_float("dsc_shift", 1.0, "")
 _flags.DEFINE_integer("output_feature_stride", 8, "")

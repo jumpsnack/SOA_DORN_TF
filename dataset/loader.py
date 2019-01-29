@@ -77,6 +77,17 @@ class Loader():
         return self._resize((x, y))
 
     def _generate_stream(self):
+        def _config_batch_stream(csv_path, stream_bufsiz, augmentation_fn=None, pre_process_fn=None):
+            data_pool = _tf.data.TextLineDataset([csv_path])
+            data_pool = data_pool.apply(_tde.shuffle_and_repeat(stream_bufsiz))
+            data_pool = data_pool.apply(_tde.map_and_batch(
+                map_func=lambda row: self._read_row(row, augmentation_fn, pre_process_fn),
+                batch_size=batch_size,
+                num_parallel_batches=_FLAGS.num_parallel_batches
+            ))
+            batch_stream = data_pool.make_one_shot_iterator().get_next()
+            return batch_stream
+
         for key in [_key for _key in _FLAGS if str(_key).endswith('csv')]:
             csv_file = _FLAGS[key]._value
             csv_path = _os.path.join(_FLAGS.dataset_dir, _FLAGS.type,
@@ -92,39 +103,14 @@ class Loader():
                         aug_flag = _FLAGS[_key]._value
                         if aug_flag:
                             augs.append(str(_key).split('_')[1])
-                data_pool = _tf.data.TextLineDataset([csv_path])
-                data_pool = data_pool.apply(_tde.shuffle_and_repeat(_FLAGS.buffer_size))
-                data_pool = data_pool.apply(_tde.map_and_batch(
-                    map_func=lambda row: self._read_row(row, augs, self._random_crop),
-                    batch_size=batch_size,
-                    num_parallel_batches=_FLAGS.num_parallel_batches
-                ))
-                self._training_stream = data_pool.make_one_shot_iterator().get_next()
-
-            data_pool = _tf.data.TextLineDataset([csv_path])
-            data_pool = data_pool.apply(_tde.shuffle_and_repeat(1))
-            data_pool = data_pool.apply(_tde.map_and_batch(
-                map_func=lambda row: self._read_row(row, augs),
-                batch_size=batch_size,
-                num_parallel_batches=_FLAGS.num_parallel_batches
-            ))
-            batch_stream = data_pool.make_one_shot_iterator().get_next()
+                self._training_stream = _config_batch_stream(csv_path, _FLAGS.buffer_size, augs, self._random_crop)
 
             print("Stream... " + key)
-            self._eval_streams[key] = batch_stream
+            self._eval_streams[key] = _config_batch_stream(csv_path, 1)
 
             if _FLAGS.use_tensorboard:
-                data_pool = _tf.data.TextLineDataset([csv_path])
-                data_pool = data_pool.apply(_tde.shuffle_and_repeat(1))
-                data_pool = data_pool.apply(_tde.map_and_batch(
-                    map_func=lambda row: self._read_row(row, augs, self._center_crop),
-                    batch_size=batch_size,
-                    num_parallel_batches=_FLAGS.num_parallel_batches
-                ))
-                batch_stream = data_pool.make_one_shot_iterator().get_next()
-
                 print("Stream for tensorboard... " + key)
-                self._tensorboard_streams[key] = batch_stream
+                self._tensorboard_streams[key] = _config_batch_stream(csv_path, 1, pre_process_fn=self._center_crop)
 
     def _read_row(self, csv_row, augs, pre_processing=None):
         rgb_name, gt_name = _tf.decode_csv(csv_row, record_defaults=[[""], [""]])
@@ -157,8 +143,9 @@ class Loader():
                 # ===================================
                 #           process NYU
                 # ===================================
-                image = _tf.image.decode_png(file, channels)
+                image = _tf.image.decode_png(file, channels, dtype=_tf.uint16)
                 image = _tf.cast(image, _tf.float32)
+                image = image / 256.0
                 image = _tf.where(_tf.less_equal(image, _FLAGS.GT_minima), -_tf.ones_like(image), image)
                 image = _tf.where(_tf.greater_equal(image, _FLAGS.GT_maxima), _tf.ones_like(image) * _FLAGS.GT_maxima,
                                   image)

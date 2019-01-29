@@ -124,7 +124,7 @@ def _sequence_aug(stream, tasks):
 
 
 def augment(stream, tasks):
-    if 'without_aug' in tasks or len(tasks) < 1:
+    if tasks is None or 'without_aug' in tasks or len(tasks) < 1:
         return _without_aug(stream)
     elif 'random' in tasks:
         return _random_aug(stream)
